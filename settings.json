@@ -1,0 +1,10 @@
+{
+  "EquipmentType": "ККТ",
+  "Model": "500",
+  "Port": "0",
+  "ComFile": "5",
+  "BaudRate": "115200",
+  "OfdChannel": "2",
+  "TimeZone": "2",
+  "AutoReconnect": "true"
+}

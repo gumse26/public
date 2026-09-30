@@ -1,0 +1,22 @@
+{
+  "gate": "http://gate.example.ru:47005",
+  "queue": "your.queue.name",
+  "addin": "http://127.0.0.1:8082/rpc",
+  "device": null,
+  "connect_on_start": false,
+  "hold_device": true,
+  "equipment_type": "ККТ",
+  "taxation_system": 0,
+  "cashier_name": "Администратор",
+  "cashier_inn": "",
+  "sale_address": "",
+  "sale_location": "",
+  "dry_run": true,
+  "allow_fiscal": false,
+  "tcp_timeout": 60,
+  "timeout": 30,
+  "electronically": false,
+  "log_dir": "logs",
+  "settings_file": "settings.json",
+  "http_port": 0
+}

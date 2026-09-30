@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Параметры оборудования — настройка</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: system-ui, "Segoe UI", Roboto, Arial, sans-serif;
+    margin: 0; background: #f4f6f9; color: #1f2937;
+  }
+  .wrap { max-width: 1320px; margin: 0 auto; padding: 10px 14px 28px; }
+  h1 { font-size: 17px; margin: 0 0 2px; }
+  .sub { color: #6b7280; font-size: 11.5px; margin-bottom: 10px; }
+  .sub code { background:#eef2f7; padding:1px 5px; border-radius:4px; }
+
+  details.page {
+    background: #fff; border: 1px solid #e5e7eb; border-radius: 8px;
+    margin-bottom: 8px; overflow: hidden;
+    box-shadow: 0 1px 2px rgba(16,24,40,.04);
+  }
+  details.page > summary {
+    list-style: none; cursor: pointer; user-select: none;
+    padding: 7px 12px; font-size: 13.5px; font-weight: 600;
+    background: #eef2f7; border-bottom: 1px solid #e5e7eb;
+    display: flex; align-items: center; gap: 8px;
+  }
+  details.page > summary::-webkit-details-marker { display: none; }
+  details.page > summary::before {
+    content: "▸"; color: #2563eb; font-size: 11px; transition: transform .15s;
+  }
+  details.page[open] > summary::before { transform: rotate(90deg); }
+  details.page:not([open]) > summary { border-bottom: none; }
+
+  .group {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    gap: 1px 16px; padding: 6px 12px 8px;
+  }
+  .group > h3 {
+    grid-column: 1 / -1; margin: 6px 0 2px; font-size: 10.5px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: .05em; color: #2563eb;
+  }
+  .row {
+    display: grid; grid-template-columns: minmax(0, 1fr) minmax(84px, 124px);
+    gap: 8px; align-items: center; padding: 2px 0; min-width: 0;
+    border-bottom: 1px dashed #f1f3f7;
+  }
+  .row:last-child { border-bottom: none; }
+  .lbl { font-size: 12px; line-height: 1.25; }
+  .nm { display: none; }
+  .ctrl { min-width: 0; }
+  .ctrl input[type=text],
+  .ctrl input[type=number],
+  .ctrl select {
+    width: 100%; padding: 3px 6px; border: 1px solid #d1d5db;
+    border-radius: 5px; font-size: 12px; background: #fff; color: inherit;
+  }
+  .ctrl input:focus, .ctrl select:focus {
+    outline: none; border-color: #2563eb;
+    box-shadow: 0 0 0 2px rgba(37,99,235,.15);
+  }
+  .ctrl input[type=checkbox] { width: 15px; height: 15px; accent-color: #2563eb; margin: 0; }
+
+  .toolbar {
+    position: sticky; bottom: 0; margin-top: 12px;
+    background: rgba(244,246,249,.94); backdrop-filter: blur(6px);
+    padding: 8px 0; display: flex; gap: 8px; flex-wrap: wrap;
+    border-top: 1px solid #e5e7eb;
+  }
+  button {
+    font: inherit; font-size: 12.5px; padding: 6px 12px; border-radius: 6px;
+    border: 1px solid transparent; cursor: pointer; transition: .15s;
+  }
+  .btn-primary { background: #2563eb; color: #fff; font-weight: 600; }
+  .btn-primary:hover { background: #1d4ed8; }
+  .btn-ghost { background: #fff; border-color: #d1d5db; color: #374151; }
+  .btn-ghost:hover { background: #f3f4f6; }
+
+  .out-wrap { margin-top: 16px; }
+  .out-head {
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: 13px; color: #6b7280; margin-bottom: 6px;
+  }
+  pre#out {
+    background: #0f172a; color: #e2e8f0; padding: 16px; border-radius: 10px;
+    font-family: ui-monospace, Consolas, monospace; font-size: 12.5px;
+    line-height: 1.5; overflow: auto; max-height: 260px; margin: 0;
+    white-space: pre; tab-size: 2;
+  }
+  pre#out:empty { display: none; }
+  .err { background:#fee2e2; color:#991b1b; padding:12px 16px; border-radius:8px; margin-bottom:16px; }
+  @media (max-width: 720px) {
+    .row { grid-template-columns: 1fr; gap: 4px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Параметры оборудования</h1>
+  <div class="sub">
+    Метод: <code>ПараметрыОборудования</code> · тип: <code>bool</code> ·
+    форма построена из XML-описания настроек ·
+    вывод: <code>&lt;Parameters&gt;</code> с атрибутами <code>Name</code> и <code>Value</code>
+  </div>
+
+  <form id="form" autocomplete="off"></form>
+
+  <div class="toolbar">
+    <button type="button" class="btn-primary" id="btnBuild">Сформировать XML</button>
+    <button type="button" class="btn-ghost" id="btnCopy">Копировать</button>
+    <button type="button" class="btn-ghost" id="btnReset">Сбросить к значениям по умолчанию</button>
+      <button type="button" class="btn-ghost" id="btnFold">Свернуть разделы</button>
+    <button type="button" class="btn-primary" id="btnLoad">Загрузить из шлюза</button>
+    <button type="button" class="btn-primary" id="btnCheck">Проверить на ККТ</button>
+    <button type="button" class="btn-primary" id="btnSave">Сохранить</button>
+  </div>
+
+  <div class="out-wrap">
+    <div class="out-head"><span>Результат (XML)</span><span id="status"></span></div>
+    <pre id="out"></pre>
+  </div>
+
+  <div class="out-wrap">
+    <div class="out-head"><span>Проверка подключения (ответ шлюза)</span></div>
+    <pre id="check"></pre>
+  </div>
+</div>
+
+<!-- ==================== ИСХОДНЫЙ XML ==================== -->
+<script id="settingsXml" type="text/xml">
+<?xml version="1.0" encoding="UTF-8"?>
+<Settings>
+    <Page Caption="Настройки соединения">
+        <Group Caption="Устройство">
+            <Parameter Name="Model" Caption="Модель" TypeValue="String" DefaultValue="500">
+                <ChoiceList>
+                    <Item Value="500">Автоматически (АТОЛ)</Item>
+                    <Item Value="93">АТОЛ 1Ф</Item>
+                    <Item Value="96">АТОЛ 2Ф</Item>
+                    <Item Value="67">АТОЛ 11Ф</Item>
+                    <Item Value="78">АТОЛ 15Ф</Item>
+                    <Item Value="81">АТОЛ 20Ф</Item>
+                    <Item Value="63">АТОЛ 22Ф (АТОЛ FPrint-22ПТК)</Item>
+                    <Item Value="95">АТОЛ 22 v2 Ф</Item>
+                    <Item Value="57">АТОЛ 25Ф</Item>
+                    <Item Value="87">АТОЛ 27Ф</Item>
+                    <Item Value="61">АТОЛ 30Ф</Item>
+                    <Item Value="97">АТОЛ 35Ф</Item>
+                    <Item Value="80">АТОЛ 50Ф</Item>
+                    <Item Value="62">АТОЛ 55Ф</Item>
+                    <Item Value="66">АТОЛ 55 v2 Ф</Item>
+                    <Item Value="69">АТОЛ 77Ф</Item>
+                    <Item Value="82">АТОЛ 91Ф</Item>
+                    <Item Value="84">АТОЛ 92Ф</Item>
+                    <Item Value="86">АТОЛ Sigma 10 (АТОЛ 150Ф)</Item>
+                    <Item Value="76">Казначей ФА</Item>
+                </ChoiceList>
+            </Parameter>
+            <Parameter Name="AccessPassword" Caption="Пароль доступа" TypeValue="String"/>
+            <Parameter Name="UserPassword" Caption="Пароль пользователя" TypeValue="String"/>
+        </Group>
+        <Group Caption="Удалённое подключение">
+            <Parameter Name="RemoteServerAddr" Caption="Адрес ПК" TypeValue="String"/>
+            <Parameter Name="RemoteServerConnectionTimeout" Caption="Таймаут подключения" TypeValue="Number" DefaultValue="10000"/>
+        </Group>
+        <Group Caption="Соединение">
+            <Parameter Name="Port" Caption="Порт" TypeValue="String" DefaultValue="1">
+                <ChoiceList>
+                    <Item Value="0">COM / VCOM</Item>
+                    <Item Value="1">USB</Item>
+                    <Item Value="2">TCP/IP</Item>
+                    <Item Value="3">Bluetooth</Item>
+                </ChoiceList>
+            </Parameter>
+            <Parameter Name="ComFile" Caption="COM-порт" TypeValue="String" DefaultValue="1">
+                <ChoiceList/>
+            </Parameter>
+            <Parameter Name="BaudRate" Caption="Скорость" TypeValue="String" DefaultValue="115200">
+                <ChoiceList>
+                    <Item Value="1200">1200 бод</Item>
+                    <Item Value="2400">2400 бод</Item>
+                    <Item Value="4800">4800 бод</Item>
+                    <Item Value="9600">9600 бод</Item>
+                    <Item Value="19200">19200 бод</Item>
+                    <Item Value="38400">38400 бод</Item>
+                    <Item Value="57600">57600 бод</Item>
+                    <Item Value="115200">115200 бод</Item>
+                    <Item Value="230400">230400 бод</Item>
+                    <Item Value="460800">460800 бод</Item>
+                    <Item Value="921600">921600 бод</Item>
+                </ChoiceList>
+            </Parameter>
+            <Parameter Name="IPAddress" Caption="IP-адрес" TypeValue="String" DefaultValue="192.168.1.10"/>
+            <Parameter Name="IPPort" Caption="IP-порт" TypeValue="Number" DefaultValue="5555"/>
+            <Parameter Name="MACAddress" Caption="MAC-адрес Bluetooth" TypeValue="String" DefaultValue="FF:FF:FF:FF:FF:FF"/>
+            <Parameter Name="OfdChannel" Caption="Канал до ОФД" TypeValue="String" DefaultValue="2">
+                <ChoiceList>
+                    <Item Value="0">Нет</Item>
+                    <Item Value="2">Автоматически (EoT)</Item>
+                </ChoiceList>
+            </Parameter>
+            <Parameter Name="DisconnectIfEOT" Caption="Отключаться от ККТ, даже если канал до ОФД - EthernetOverTransport" TypeValue="Boolean" DefaultValue="false"/>
+            <Parameter Name="AutoTimeSync" Caption="Автоматическая синхронизация времени при открытии смены" TypeValue="Boolean" DefaultValue="0"/>
+            <Parameter Name="AutoTimeSyncTime" Caption="Предел допустимого расхождения (мин)" TypeValue="Number" DefaultValue="15"/>
+            <Parameter Name="TimeZone" Caption="Часовая зона" TypeValue="String" DefaultValue="2">
+                <ChoiceList>
+                    <Item Value="0">Часовая зона устройства</Item>
+                    <Item Value="1">1 (UTC+2)</Item>
+                    <Item Value="2">2 (UTC+3)</Item>
+                    <Item Value="3">3 (UTC+4)</Item>
+                    <Item Value="4">4 (UTC+5)</Item>
+                    <Item Value="5">5 (UTC+6)</Item>
+                    <Item Value="6">6 (UTC+7)</Item>
+                    <Item Value="7">7 (UTC+8)</Item>
+                    <Item Value="8">8 (UTC+9)</Item>
+                    <Item Value="9">9 (UTC+10)</Item>
+                    <Item Value="10">10 (UTC+11)</Item>
+                    <Item Value="11">11 (UTC+12)</Item>
+                </ChoiceList>
+            </Parameter>
+            <Parameter Name="UseCommodityNameForAdvance" Caption="Передавать наименование позиции (тег 1030) при оплате авансом" TypeValue="Boolean" DefaultValue="0"/>
+            <Parameter Name="GrpcServerPort" Caption="Порт сервера GRPC" TypeValue="Number" DefaultValue="4041"/>
+        </Group>
+    </Page>
+
+    <Page Caption="Параметры печати">
+        <Group Caption="Штрихкоды">
+            <Parameter Name="PrintBarcodeText" Caption="Печатать значение штрихкода для линейных ШК" TypeValue="Boolean" DefaultValue="false"/>
+            <Parameter Name="Ean8BarcodeScale" Caption="Увеличение штрихкода EAN8" TypeValue="Number" DefaultValue="1"/>
+            <Parameter Name="Ean13BarcodeScale" Caption="Увеличение штрихкода EAN13" TypeValue="Number" DefaultValue="1"/>
+            <Parameter Name="LineBarcodeScale" Caption="Увеличение других линейных ШК" TypeValue="Number" DefaultValue="1"/>
+            <Parameter Name="QRBarcodeScale" Caption="Увеличение штрихкода QR" TypeValue="Number" DefaultValue="5"/>
+        </Group>
+        <Group Caption="Надписи">
+            <Parameter Name="PrintNonFiscalFooter" Caption="Печатать подвал на нефискальных документах" TypeValue="Boolean" DefaultValue="true"/>
+            <Parameter Name="PrintUserAttribute" Caption="Печатать дополнительный реквизит пользователя (1084)" TypeValue="Boolean" DefaultValue="true"/>
+            <Parameter Name="PrintAdditionalAttribute" Caption="Печатать дополнительный реквизит чека (БСО) (1192)" TypeValue="Boolean" DefaultValue="true"/>
+            <Parameter Name="PrintPositionAdditionalAttribute" Caption="Печатать дополнительный реквизит предмета расчета (1191)" TypeValue="Boolean" DefaultValue="true"/>
+        </Group>
+    </Page>
+
+    <Page Caption="Запись настроек в ККТ">
+        <Group Caption="Связь с ОФД">
+            <Parameter Name="DeviceOfdHost" Caption="Адрес ОФД" TypeValue="String"/>
+            <Parameter Name="DeviceOfdPort" Caption="Порт ОФД" TypeValue="Number"/>
+            <Parameter Name="DeviceOfdChannel" Caption="Канал обмена с ОФД" TypeValue="Number" DefaultValue="0">
+                <ChoiceList>
+                    <Item Value="0">Не выбран</Item>
+                    <Item Value="1">USB (EoU)</Item>
+                    <Item Value="2">Ethernet</Item>
+                    <Item Value="3">Wi-Fi</Item>
+                    <Item Value="4">GSM-модем</Item>
+                    <Item Value="5">EthernetOverTransport (EoT)</Item>
+                    <Item Value="6">TCP/IP стек ОС</Item>
+                </ChoiceList>
+            </Parameter>
+        </Group>
+        <Group Caption="Работа с КМ">
+            <Parameter Name="DeviceIsmHost" Caption="Адрес ИСМ" TypeValue="String"/>
+            <Parameter Name="DeviceIsmPort" Caption="Порт ИСМ" TypeValue="Number" DefaultValue="0"/>
+            <Parameter Name="DeviceOkpHost" Caption="Адрес ОКП" TypeValue="String"/>
+            <Parameter Name="DeviceOkpPort" Caption="Порт ОКП" TypeValue="Number" DefaultValue="0"/>
+            <Parameter Name="MarkingNumberRetries" Caption="Количество повторов при проверке КМ" TypeValue="Number" DefaultValue="3"/>
+            <Parameter Name="MarkingConnectionOpeningTime" Caption="Время открытия соединения при проверке КМ" TypeValue="Number" DefaultValue="10"/>
+            <Parameter Name="MarkingResponseWaitingTime" Caption="Время ожидания ответа при проверке КМ" TypeValue="Number" DefaultValue="30"/>
+            <Parameter Name="MarkingDelayTimeBeforeReplay" Caption="Время задержки перед повтором при проверке КМ" TypeValue="Number" DefaultValue="5"/>
+            <Parameter Name="MarkingOpenConnectionTime" Caption="Время открытого соединения при проверке КМ" TypeValue="Number" DefaultValue="120"/>
+        </Group>
+    </Page>
+</Settings>
+</script>
+
+<!-- ==================== ЛОГИКА ==================== -->
+<script>
+(function () {
+  "use strict";
+
+  const ID_PREFIX = "f_";
+
+  /* ---------- 1. Парсим XML ---------- */
+  const xmlText = document.getElementById("settingsXml").textContent.trim();
+  const xmlDoc  = new DOMParser().parseFromString(xmlText, "application/xml");
+
+  const parseError = xmlDoc.querySelector("parsererror");
+  if (parseError) {
+    document.getElementById("form").innerHTML =
+      '<div class="err">Ошибка разбора XML: ' + parseError.textContent + "</div>";
+    return;
+  }
+
+  const pages = Array.from(xmlDoc.querySelectorAll("Settings > Page"));
+
+  /* ---------- 2. Вспомогательные ---------- */
+  function boolFromAttr(v) {
+    return v === "true" || v === "1";
+  }
+
+  // Список COM-портов 1..256 (в XML он пустой — генерируем программно)
+  function comPortChoices() {
+    const list = [];
+    for (let i = 1; i <= 256; i++) {
+      let text = "COM" + i;
+      if (i === 5) text = "COM5: atol-usbcom_proxy1";
+      if (i === 6) text = "COM6: atol-usbcom_proxy2";
+      list.push({ value: String(i), text: text });
+    }
+    return list;
+  }
+
+  function getChoices(param) {
+    const list = [];
+    param.querySelectorAll("ChoiceList > Item").forEach(function (item) {
+      list.push({
+        value: item.getAttribute("Value"),
+        text: item.textContent.trim()
+      });
+    });
+    if (list.length === 0 && param.getAttribute("Name") === "ComFile") {
+      return comPortChoices();
+    }
+    return list;
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  }
+
+  function escapeXml(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&apos;" }[c];
+    });
+  }
+
+  /* ---------- 3. Построение формы ---------- */
+  const form = document.getElementById("form");
+
+  pages.forEach(function (page) {
+    const details = document.createElement("details");
+    details.className = "page";
+    details.open = true;                       // всё видно сразу, но раздел можно свернуть
+
+    const summary = document.createElement("summary");
+    summary.textContent = page.getAttribute("Caption") || "Без названия";
+    details.appendChild(summary);
+
+    page.querySelectorAll(":scope > Group").forEach(function (group) {
+      const gDiv = document.createElement("div");
+      gDiv.className = "group";
+
+      const h3 = document.createElement("h3");
+      h3.textContent = group.getAttribute("Caption") || "";
+      gDiv.appendChild(h3);
+
+      group.querySelectorAll(":scope > Parameter").forEach(function (param) {
+        gDiv.appendChild(buildRow(param));
+      });
+
+      details.appendChild(gDiv);
+    });
+
+    form.appendChild(details);
+  });
+
+  function buildRow(param) {
+    const name    = param.getAttribute("Name");
+    const caption = param.getAttribute("Caption") || name;
+    const type    = param.getAttribute("TypeValue") || "String";
+    const def     = param.getAttribute("DefaultValue"); // может быть null
+    const choices = getChoices(param);
+
+    const row = document.createElement("div");
+    row.className = "row";
+
+    const label = document.createElement("label");
+    label.className = "lbl";
+    label.setAttribute("for", ID_PREFIX + name);
+    label.innerHTML = escapeHtml(caption) +
+                      '<span class="nm">' + escapeHtml(name) + " · " + type + "</span>";
+
+    const ctrl = document.createElement("div");
+    ctrl.className = "ctrl";
+
+    let el;
+
+    if (choices.length > 0) {
+      /* --- выпадающий список --- */
+      el = document.createElement("select");
+      choices.forEach(function (c) {
+        const opt = document.createElement("option");
+        opt.value = c.value;
+        opt.textContent = c.text;
+        el.appendChild(opt);
+      });
+      if (def !== null) {
+        el.value = def;
+        if (el.selectedIndex === -1) el.selectedIndex = 0;
+      }
+    } else if (type === "Boolean") {
+      /* --- флажок --- */
+      el = document.createElement("input");
+      el.type = "checkbox";
+      el.checked = def !== null ? boolFromAttr(def) : false;
+    } else if (type === "Number") {
+      /* --- число --- */
+      el = document.createElement("input");
+      el.type = "number";
+      el.step = "any";
+      if (def !== null) el.value = def;
+    } else {
+      /* --- строка --- */
+      el = document.createElement("input");
+      el.type = "text";
+      if (def !== null) el.value = def;
+    }
+
+    el.id = ID_PREFIX + name;
+    el.dataset.param = name;
+    el.dataset.type = type;
+    el.dataset.default = def === null ? "" : def;
+
+    ctrl.appendChild(el);
+    row.appendChild(label);
+    row.appendChild(ctrl);
+    return row;
+  }
+
+  /* ---------- 4. Сбор значений ---------- */
+  function readValue(param) {
+    const name = param.getAttribute("Name");
+    const type = param.getAttribute("TypeValue") || "String";
+    const el   = document.getElementById(ID_PREFIX + name);
+    if (!el) return { skip: true };
+
+    // флажок
+    if (el.type === "checkbox") {
+      return { value: el.checked };
+    }
+
+    const raw = el.value.trim();
+    if (raw === "") return { skip: true };          // «по заполненным значениям»
+
+    if (type === "Number") {
+      const num = Number(raw);
+      return { value: Number.isNaN(num) ? raw : num };
+    }
+    return { value: raw };
+  }
+
+  /* ---------- 5. Формирование XML (плоский список) ---------- */
+  function buildXml() {
+    const lines = [];
+    lines.push('<?xml version="1.0" encoding="UTF-8"?>');
+    lines.push('<Parameters>');
+
+    // Проходим по всем Parameter в исходном XML (в порядке документа)
+    xmlDoc.querySelectorAll('Parameter').forEach(function (param) {
+      const res = readValue(param);
+      if (res.skip) return; // пропускаем пустые
+
+      const name = param.getAttribute("Name");
+      const valueStr = (typeof res.value === "boolean")
+        ? (res.value ? "true" : "false")
+        : String(res.value);
+
+      lines.push(
+        '  <Parameter Name="' + escapeXml(name) +
+        '" Value="' + escapeXml(valueStr) + '"/>'
+      );
+    });
+
+    lines.push('</Parameters>');
+    return lines.join("\n");
+  }
+
+  /* ---------- 6. Кнопки ---------- */
+  const out    = document.getElementById("out");
+  const status = document.getElementById("status");
+
+  document.getElementById("btnBuild").addEventListener("click", function () {
+    const xml = buildXml();
+    out.textContent = xml;
+    status.textContent = "Готово: " + new Date().toLocaleTimeString("ru-RU");
+  });
+
+  document.getElementById("btnCopy").addEventListener("click", function () {
+    if (!out.textContent) { status.textContent = "Сначала сформируйте XML"; return; }
+    navigator.clipboard.writeText(out.textContent).then(function () {
+      status.textContent = "Скопировано в буфер обмена";
+      setTimeout(function () { status.textContent = ""; }, 2000);
+    }).catch(function () {
+      status.textContent = "Не удалось скопировать";
+    });
+  });
+
+  document.getElementById("btnReset").addEventListener("click", function () {
+    form.querySelectorAll("input, select").forEach(function (el) {
+      const def = el.dataset.default || "";
+      if (el.type === "checkbox") {
+        el.checked = boolFromAttr(def);
+      } else {
+        el.value = def;
+        if (el.tagName === "SELECT" && el.selectedIndex === -1) el.selectedIndex = 0;
+      }
+    });
+    out.textContent = "";
+    status.textContent = "Значения сброшены";
+    setTimeout(function () { status.textContent = ""; }, 2000);
+  });
+
+  // свернуть / развернуть все разделы — чтобы форма помещалась на экран
+  document.getElementById("btnFold").addEventListener("click", function (e) {
+    const sections = form.querySelectorAll("details.page");
+    const anyOpen = Array.prototype.some.call(sections, function (d) { return d.open; });
+    Array.prototype.forEach.call(sections, function (d) { d.open = !anyOpen; });
+    e.target.textContent = anyOpen ? "Развернуть разделы" : "Свернуть разделы";
+  });
+  /* ---------- 7. Обмен со шлюзом gate.atol.piot (--http) ---------- */
+  const checkOut = document.getElementById("check");
+
+  function api(path, options) {
+    return fetch(path, options).then(function (r) {
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      return r.json();
+    });
+  }
+
+  // Все значения формы в виде «имя: значение» (пустые остаются пустыми)
+  function collectValues() {
+    const values = {};
+    xmlDoc.querySelectorAll("Parameter").forEach(function (param) {
+      const name = param.getAttribute("Name");
+      const el = document.getElementById(ID_PREFIX + name);
+      if (!el) return;
+      if (el.type === "checkbox") {
+        values[name] = el.checked ? "true" : "false";
+      } else {
+        values[name] = el.value.trim();
+      }
+    });
+    return values;
+  }
+
+  // Проставить значения, пришедшие от шлюза
+  function applyValues(values) {
+    let n = 0;
+    Object.keys(values || {}).forEach(function (name) {
+      const el = document.getElementById(ID_PREFIX + name);
+      if (!el) return;
+      const v = values[name];
+      if (el.type === "checkbox") {
+        el.checked = boolFromAttr(v);
+      } else {
+        el.value = v;
+        if (el.tagName === "SELECT" && el.selectedIndex === -1) el.selectedIndex = 0;
+      }
+      n++;
+    });
+    return n;
+  }
+
+  function post(path, payload) {
+    return api(path, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+  }
+
+  document.getElementById("btnLoad").addEventListener("click", function () {
+    status.textContent = "Загружаю из шлюза…";
+    api("/api/settings").then(function (r) {
+      const n = applyValues(r.values);
+      out.textContent = r.connectXml || "";
+      status.textContent = "Загружено параметров: " + n + " из " + r.file;
+    }).catch(function (e) {
+      status.textContent = "Шлюз недоступен (" + e.message + "). Откройте форму по адресу gate.atol.piot --http";
+    });
+  });
+
+  document.getElementById("btnCheck").addEventListener("click", function () {
+    status.textContent = "Проверяю подключение…";
+    checkOut.textContent = "";
+    post("/api/check", { values: collectValues() }).then(function (r) {
+      checkOut.textContent = JSON.stringify(r, null, 2);
+      status.textContent = r.ok
+        ? "Подключено: " + r.device
+        : "Ошибка: " + (r.error || r.componentError || "неизвестно");
+    }).catch(function (e) {
+      status.textContent = "Шлюз недоступен (" + e.message + ")";
+    });
+  });
+
+  document.getElementById("btnSave").addEventListener("click", function () {
+    status.textContent = "Сохраняю…";
+    post("/api/settings", { values: collectValues() }).then(function (r) {
+      out.textContent = r.connectXml || "";
+      status.textContent = "Сохранено параметров: " + r.saved + " → " + r.file;
+    }).catch(function (e) {
+      status.textContent = "Шлюз недоступен (" + e.message + ")";
+    });
+  });
+})();
+</script>
+</body>
+</html>
