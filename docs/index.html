@@ -1,0 +1,816 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Шлюз ККТ АТОЛ — документация</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,"Segoe UI",Roboto,Arial,sans-serif;background:#f4f6f9;color:#1f2937;line-height:1.5}
+.layout{display:flex;min-height:100vh}
+nav{width:280px;flex:0 0 280px;background:#fff;border-right:1px solid #e5e7eb;padding:14px 0;position:sticky;top:0;height:100vh;overflow:auto}
+nav .ttl{font-size:13px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.05em;padding:0 16px 10px}
+nav a{display:block;padding:7px 16px;font-size:13px;color:#1f2937;text-decoration:none;border-left:3px solid transparent}
+nav a:hover{background:#f3f4f6}
+nav a.on{background:#eef2f7;border-left-color:#2563eb;color:#1d4ed8;font-weight:600}
+main{flex:1;padding:20px 28px 70px;max-width:1000px}
+h1{font-size:22px;margin:0 0 12px;padding-bottom:8px;border-bottom:2px solid #2563eb}
+h2{font-size:17px;margin:22px 0 8px;color:#1d4ed8}
+h3{font-size:14px;margin:16px 0 6px;color:#374151}
+p{margin:6px 0}
+code{background:#eef2f7;padding:1px 5px;border-radius:4px;font-family:ui-monospace,Consolas,monospace;font-size:12.5px}
+pre{background:#0f172a;color:#e2e8f0;padding:12px 14px;border-radius:8px;overflow:auto;font-size:12.5px;line-height:1.45}
+pre code{background:none;color:inherit;padding:0}
+table{border-collapse:collapse;width:100%;margin:8px 0;font-size:13px}
+th,td{border:1px solid #e5e7eb;padding:5px 8px;text-align:left;vertical-align:top}
+th{background:#eef2f7;font-weight:600}
+tr:nth-child(even) td{background:#fafbfd}
+ul{margin:4px 0;padding-left:20px}
+li{margin:2px 0}
+a{color:#2563eb}
+hr{border:none;border-top:1px solid #e5e7eb;margin:18px 0}
+@media(max-width:820px){.layout{flex-direction:column}nav{width:auto;flex:none;height:auto;position:static;border-right:none;border-bottom:1px solid #e5e7eb}}
+</style>
+</head>
+<body>
+<div class="layout">
+<nav>
+<div class="ttl">Операции</div>
+<a href="#" data-i="1">00_Как_пользоваться</a>
+<a href="#" data-i="2">01_Продажа</a>
+<a href="#" data-i="3">02_Возврат</a>
+<a href="#" data-i="4">03_Продажа_маркированного_товара</a>
+<a href="#" data-i="5">04_СнятьОтчетБезГашения</a>
+<a href="#" data-i="6">05_СнятьОтчетСГашением</a>
+<a href="#" data-i="7">06_ОткрытьЯщик</a>
+<a href="#" data-i="8">07_ОтменитьЧек</a>
+<a href="#" data-i="9">08_ПроверитьКодыМаркировки</a>
+<a href="#" data-i="10">09_Код_1С</a>
+</nav>
+<main>
+<section id="s1" style="display:none">
+<h1>Внешний протокол шлюза gate.atol.piot</h1>
+<p>Шлюз принимает <strong>одну команду за запуск</strong>. Команда — JSON-объект с одним ключом</p>
+<p>верхнего уровня: <strong>имя операции</strong>. Всё внутри — параметры операции.</p>
+<h2>Запуск</h2>
+<pre><code>
+gate.atol.piot.exe --send &lt;файл.json&gt; [--no-dry-run] [--allow-fiscal]
+</code></pre>
+<table>
+<tr><th>Ключ</th><th>Смысл</th></tr>
+<tr><td><code>--send &lt;файл&gt;</code></td><td>выполнить команду из файла</td></tr>
+<tr><td><code>--dry-run</code></td><td><strong>по умолчанию</strong>: в кассу ничего не уходит, только собирается XML и пишется журнал</td></tr>
+<tr><td><code>--no-dry-run</code></td><td>отправлять команды в кассу</td></tr>
+<tr><td><code>--allow-fiscal</code></td><td>разрешить фискальные операции (чеки, закрытие смены)</td></tr>
+</table>
+<p>Хост компоненты поднимается отдельно (в будущей версии шлюз делает это сам):</p>
+<pre><code>
+gate.1c.addin.proxy.exe --http-port 8082 --http-bind 127.0.0.1 --dll fptr10_1c_win32_10_10_8_21.dll
+</code></pre>
+<h2>Виды операций</h2>
+<table>
+<tr><th>Файл</th><th>Операция</th><th>Метод компоненты</th><th>Фискальная</th></tr>
+<tr><td><code>01_Продажа.md</code></td><td><code>НапечататьЧек</code>, <code>ТипЧека: "Продажа"</code></td><td><code>СформироватьЧек</code></td><td>да</td></tr>
+<tr><td><code>02_Возврат.md</code></td><td><code>НапечататьЧек</code>, <code>ТипЧека: "Возврат"</code></td><td><code>СформироватьЧек</code></td><td>да</td></tr>
+<tr><td><code>03_Продажа_маркированного_товара.md</code></td><td><code>НапечататьЧек</code> с кодом маркировки</td><td><code>СформироватьЧек</code></td><td>да</td></tr>
+<tr><td><code>04_СнятьОтчетБезГашения.md</code></td><td><code>СнятьОтчетБезГашения</code></td><td><code>НапечататьОтчетБезГашения</code></td><td>нет</td></tr>
+<tr><td><code>05_СнятьОтчетСГашением.md</code></td><td><code>СнятьОтчетСГашением</code></td><td><code>ЗакрытьСмену</code></td><td>да</td></tr>
+<tr><td><code>06_ОткрытьЯщик.md</code></td><td><code>ОткрытьЯщик</code></td><td><code>ОткрытьДенежныйЯщик</code></td><td>нет</td></tr>
+<tr><td><code>07_ОтменитьЧек.md</code></td><td><code>ОтменитьЧек</code></td><td><code>ЗакрытьСессиюРегистрацииКМ</code></td><td>нет</td></tr>
+<tr><td><code>08_ПроверитьКодыМаркировки.md</code></td><td><code>ПроверитьКодыМаркировки</code></td><td><code>ЗапросКМ</code> + <code>ПолучитьРезультатыЗапросаКМ</code> + <code>ПодтвердитьКМ</code></td><td>нет</td></tr>
+</table>
+<h2>Как устроен полный дамп</h2>
+<p>В каждом файле, кроме запроса и ответа, приведён <strong>полный обмен</strong> — то, что шлюз</p>
+<p>отправляет компоненте и получает от неё. Формат один и тот же:</p>
+<pre><code>
+→ {"jsonrpc":"2.0","id":101,"method":"Метод","params":[ … ]}
+← {"jsonrpc":"2.0","id":101,"result":{ … }}
+</code></pre>
+<p>Дампы сняты с живой кассы АТОЛ (ФФД 1.2). Где помечено «форма вызова» — реальный</p>
+<p>прогон этой операции не снимался, приведён точный вид обращения по коду шлюза.</p>
+<h2>Где смотреть у себя</h2>
+<p><code>logs\gate.atol.piot_ГГГГ-ММ-ДД.log</code>:</p>
+<ul><li><code>[НапечататьЧек] XML, который будет передан:</code> — собранный <code>CheckPackage</code>;</li></ul>
+<ul><li><code>---&gt; Метод: {…}</code> и <code>&lt;--- Метод: {…}</code> — обмен с компонентой;</li></ul>
+<ul><li><code>РЕЗУЛЬТАТ: {…}</code> — итог.</li></ul>
+</section>
+<section id="s2" style="display:none">
+<h1>Продажа</h1>
+<p><strong>Операция:</strong> <code>НапечататьЧек</code> · <code>ТипЧека: "Продажа"</code> · <strong>метод:</strong> <code>СформироватьЧек</code> (OperationType = 1)</p>
+<p><strong>Флаги:</strong> <code>--send файл.json --no-dry-run --allow-fiscal</code></p>
+<h2>Запрос</h2>
+<pre><code>
+{"НапечататьЧек":{
+  "ТипЧека":"Продажа","СНО":1,"Кассир":{"Имя":"Администратор"},
+  "Оплата":[1,0,0,0,0,0,0,0,0],
+  "Товары":[{"Наименование":"Тестовая позиция","Количество":1,"Цена":1,"Сумма":1,
+             "Скидка":0,"Подразделение":0,"СтавкаНДС":"5","НомерНалога":"5",
+             "ПризнакПредметаРасчета":1,"ПризнакСпособаРасчета":4}],
+  "СуммаСкидкиНаЧек":0}}
+</code></pre>
+<h2>Поля запроса</h2>
+<table>
+<tr><th>Поле</th><th>Тип</th><th>Обяз.</th><th>Описание</th></tr>
+<tr><td><code>ТипЧека</code></td><td>строка</td><td>да</td><td><code>Продажа</code> / <code>Возврат</code> / <code>Расход</code> / <code>ВозвратРасхода</code> → OperationType 1/2/3/4</td></tr>
+<tr><td><code>СНО</code></td><td>число</td><td>нет</td><td>1-Общая, 2-УСН Доход, 4-УСН Д-Р, 8-ЕНВД, 16-ЕСХН, 32-Патент. Пусто — из <code>config.json</code></td></tr>
+<tr><td><code>Кассир.Имя</code></td><td>строка</td><td>нет</td><td><code>CashierName</code>; пусто — <code>cashier_name</code> из <code>config.json</code></td></tr>
+<tr><td><code>Оплата</code></td><td>9 чисел</td><td>да</td><td>[0] нал, [1] безнал, [2] предоплата, [3] постоплата, [4] встречное, [5..8] резерв</td></tr>
+<tr><td><code>Наименование</code></td><td>строка</td><td>да</td><td>тег 1030</td></tr>
+<tr><td><code>Количество</code></td><td>число</td><td>да</td><td>количество</td></tr>
+<tr><td><code>Цена</code></td><td>число</td><td>да</td><td>цена за единицу</td></tr>
+<tr><td><code>Сумма</code></td><td>число</td><td>да</td><td>итог по позиции; проверяется <code>Количество × Цена − Скидка</code></td></tr>
+<tr><td><code>Скидка</code></td><td>число</td><td>нет</td><td>скидка по позиции</td></tr>
+<tr><td><code>Подразделение</code></td><td>число</td><td>нет</td><td>тег 1198</td></tr>
+<tr><td><code>СтавкаНДС</code></td><td>строка</td><td>да</td><td><code>none</code>, <code>0</code>, <code>5</code>, <code>7</code>, <code>10</code>, <code>20</code>, <code>22</code>; НДС считается как <code>Сумма × ставка/(100+ставка)</code></td></tr>
+<tr><td><code>НомерНалога</code></td><td>строка</td><td>нет</td><td>альтернатива <code>СтавкеНДС</code></td></tr>
+<tr><td><code>ПризнакПредметаРасчета</code></td><td>число</td><td>нет</td><td>тег 1212, по умолчанию 33</td></tr>
+<tr><td><code>ПризнакСпособаРасчета</code></td><td>число</td><td>нет</td><td>тег 1214, по умолчанию 4</td></tr>
+<tr><td><code>СуммаСкидкиНаЧек</code></td><td>число</td><td>нет</td><td>скидка на чек</td></tr>
+<tr><td><code>ЭлПочтаТелефон</code></td><td>строка</td><td>нет</td><td>тег 1008</td></tr>
+</table>
+<h2>Полный дамп (живая касса)</h2>
+<p><strong>XML, который собрал шлюз:</strong></p>
+<pre><code>
+&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+&lt;CheckPackage&gt;
+  &lt;Parameters CashierName="Администратор" OperationType="1" TaxationSystem="0"
+              SaleAddress="Челябинская область, г.о. Челябинский, г. Челябинск, ул. Каслинская, д. 5В"
+              SaleLocation="Магазин домашнего текстиля"&gt;
+    &lt;AgentData /&gt;&lt;VendorData /&gt;&lt;CustomerDetail /&gt;&lt;OperationalAttribute /&gt;&lt;IndustryAttribute /&gt;
+  &lt;/Parameters&gt;
+  &lt;Positions&gt;
+    &lt;FiscalString Name="Тестовая позиция" Quantity="1" PriceWithDiscount="1.00" AmountWithDiscount="1.00"
+                  Department="0" VATRate="5" PaymentMethod="4" CalculationSubject="1"
+                  MeasureOfQuantity="0" DiscountAmount="0" VATAmount="0.05"&gt;
+      &lt;AgentData /&gt;&lt;VendorData /&gt;&lt;IndustryAttribute /&gt;
+    &lt;/FiscalString&gt;
+  &lt;/Positions&gt;
+  &lt;Payments Cash="1.00" ElectronicPayment="0.00" PrePayment="0.00" PostPayment="0.00" Barter="0.00" /&gt;
+&lt;/CheckPackage&gt;
+</code></pre>
+<p><strong>1. Подключение</strong></p>
+<pre><code>
+→ {"jsonrpc":"2.0","id":101,"method":"ПодключитьОборудование","params":[
+     {"type":"out-str","value":65536},{"type":"str","value":"ККТ"},
+     {"type":"str","value":"&lt;?xml version=\"1.0\" encoding=\"UTF-8\"?&gt;\n&lt;Parameters&gt;\n\t&lt;Parameter Name=\"EquipmentType\" Value=\"ККТ\"/&gt;\n&lt;/Parameters&gt;"}]}
+
+← {"jsonrpc":"2.0","id":101,"result":{"method":"ПодключитьОборудование","type":"bool","value":true,
+     "returned":"VTYPE_BOOL=true","out":["ATOL_KKT_1C_V10_X_ESM#0"],"outScalars":[],
+     "componentData":["ATOL_KKT_1C_V10_X_ESM#0","ПодключитьОборудование"]}}
+</code></pre>
+<p><strong>2. Чек</strong></p>
+<pre><code>
+→ {"jsonrpc":"2.0","id":101,"method":"СформироватьЧек","params":[
+     {"type":"str","value":"ATOL_KKT_1C_V10_X_ESM#0"},
+     {"type":"bool","value":"false"},
+     {"type":"str","value":"&lt;CheckPackage выше&gt;"},
+     {"type":"out","value":65536}]}
+
+← {"jsonrpc":"2.0","id":101,"result":{"method":"СформироватьЧек","type":"bool","value":true,
+     "returned":"VTYPE_BOOL=true",
+     "out":["&lt;?xml version=\"1.0\" encoding=\"UTF-8\"?&gt;\n&lt;DocumentOutputParameters&gt;\n  &lt;Parameters CheckNumber=\"414\" ShiftClosingCheckNumber=\"19\" FiscalSign=\"1040188424\" PrintError=\"false\"/&gt;\n&lt;/DocumentOutputParameters&gt;"],
+     "outScalars":[],"componentData":["...","СформироватьЧек"]}}
+</code></pre>
+<h2>Ответ шлюза</h2>
+<pre><code>
+{"НомерЧека":"19","НомерДокумента":"414","ФлагРегистрацииККТ":true,"НомерККТВМагазине":0,
+ "ФискальныйПризнак":"1040188424","ОшибкаПечати":false,"НомерУведомленияМТ":null}
+</code></pre>
+<table>
+<tr><th>Поле</th><th>Описание</th></tr>
+<tr><td><code>НомерЧека</code></td><td>номер чека в смене (<code>ShiftClosingCheckNumber</code>)</td></tr>
+<tr><td><code>НомерДокумента</code></td><td>номер фискального документа (<code>CheckNumber</code>)</td></tr>
+<tr><td><code>ФлагРегистрацииККТ</code></td><td><code>true</code> — чек фискализирован</td></tr>
+<tr><td><code>ФискальныйПризнак</code></td><td>ФПД (<code>FiscalSign</code>)</td></tr>
+<tr><td><code>ОшибкаПечати</code></td><td><code>true</code> — фискализирован, но бумага не напечатана; повторять чек нельзя</td></tr>
+<tr><td><code>НомерУведомленияМТ</code></td><td>номер уведомления о реализации МТ (<code>MTNumber</code>)</td></tr>
+</table>
+<h2>Примечания</h2>
+<ul><li>Сумма позиций обязана совпадать с суммой оплат — шлюз проверяет это до отправки.</li></ul>
+<ul><li><code>Электронно</code> всегда передаётся логическим (<code>{"type":"bool"}</code>); строка даёт ошибку типа 999.</li></ul>
+<ul><li>При <code>ОшибкаПечати = true</code> повторный вызов создаст <strong>второй</strong> фискальный документ.</li></ul>
+</section>
+<section id="s3" style="display:none">
+<h1>Возврат</h1>
+<p><strong>Операция:</strong> <code>НапечататьЧек</code> · <code>ТипЧека: "Возврат"</code> · <strong>метод:</strong> <code>СформироватьЧек</code> (OperationType = 2)</p>
+<p><strong>Флаги:</strong> <code>--send файл.json --no-dry-run --allow-fiscal</code></p>
+<h2>Запрос</h2>
+<p>Отличается от продажи <strong>ровно одним полем</strong>:</p>
+<pre><code>
+{"НапечататьЧек":{
+  "ТипЧека":"Возврат","СНО":1,"Кассир":{"Имя":"Администратор"},
+  "Оплата":[1,0,0,0,0,0,0,0,0],
+  "Товары":[{"Наименование":"Тестовая позиция","Количество":1,"Цена":1,"Сумма":1,
+             "Подразделение":0,"СтавкаНДС":"5","НомерНалога":"5",
+             "ПризнакПредметаРасчета":1,"ПризнакСпособаРасчета":4}],
+  "СуммаСкидкиНаЧек":0}}
+</code></pre>
+<p>Поля — как в <code>01_Продажа.md</code>.</p>
+<h2>Полный дамп (живая касса)</h2>
+<p><strong>XML:</strong> тот же <code>CheckPackage</code>, но <code>&lt;Parameters … OperationType="2" …&gt;</code>.</p>
+<pre><code>
+→ {"jsonrpc":"2.0","id":101,"method":"СформироватьЧек","params":[
+     {"type":"str","value":"ATOL_KKT_1C_V10_X_ESM#0"},
+     {"type":"bool","value":"false"},
+     {"type":"str","value":"&lt;?xml version=\"1.0\" encoding=\"UTF-8\"?&gt;\r\n&lt;CheckPackage&gt;\r\n  &lt;Parameters CashierName=\"Администратор\" OperationType=\"2\" TaxationSystem=\"0\" …&gt;\r\n … \r\n&lt;/CheckPackage&gt;"},
+     {"type":"out","value":65536}]}
+
+← {"jsonrpc":"2.0","id":101,"result":{"method":"СформироватьЧек","type":"bool","value":true,
+     "returned":"VTYPE_BOOL=true",
+     "out":["&lt;?xml version=\"1.0\" encoding=\"UTF-8\"?&gt;\n&lt;DocumentOutputParameters&gt;\n  &lt;Parameters CheckNumber=\"415\" ShiftClosingCheckNumber=\"20\" FiscalSign=\"2255683210\" PrintError=\"false\"/&gt;\n&lt;/DocumentOutputParameters&gt;"],
+     "outScalars":[],"componentData":["...","СформироватьЧек"]}}
+</code></pre>
+<h2>Ответ шлюза</h2>
+<pre><code>
+{"НомерЧека":"20","НомерДокумента":"415","ФлагРегистрацииККТ":true,"НомерККТВМагазине":0,
+ "ФискальныйПризнак":"2255683210","ОшибкаПечати":false,"НомерУведомленияМТ":null}
+</code></pre>
+<h2>Примечания</h2>
+<ul><li>Возврат <strong>маркированного</strong> товара требует заново проверить КМ с <code>ЭтоВозврат: true</code> — см. <code>08_ПроверитьКодыМаркировки.md</code>.</li></ul>
+<ul><li>Возврат расхода — <code>ТипЧека: "ВозвратРасхода"</code> (OperationType = 4).</li></ul>
+</section>
+<section id="s4" style="display:none">
+<h1>Продажа маркированного товара</h1>
+<p><strong>Операция:</strong> <code>НапечататьЧек</code> · <strong>метод:</strong> <code>СформироватьЧек</code> · <strong>флаги:</strong> <code>--no-dry-run --allow-fiscal</code></p>
+<p>Порядок: <strong>1)</strong> проверить КМ (<code>08_ПроверитьКодыМаркировки.md</code>, <code>ТипПодтверждения: 0</code>);</p>
+<p><strong>2)</strong> взять <code>GUID</code> из ответа проверки; <strong>3)</strong> отправить чек с кодом маркировки.</p>
+<h2>Запрос</h2>
+<pre><code>
+{"НапечататьЧек":{
+  "ТипЧека":"Продажа","СНО":1,"Кассир":{"Имя":"Администратор"},
+  "Оплата":[1,0,0,0,0,0,0,0,0],
+  "Товары":[{
+    "Наименование":"Маркированный товар","Количество":1,"Цена":1,"Сумма":1,
+    "Подразделение":0,"СтавкаНДС":"5","НомерНалога":"5",
+    "ПризнакПредметаРасчета":33,"ПризнакСпособаРасчета":4,
+    "КодМаркировки":"MDEwNDY5MDY0NjEyMzE4NjIxNS5jZ2d5ZExsaEk6aB05MUVFMTIdOTJHWWt4T2JncXB3SndHMlZNQjF2dnZFTWt2NTlZNnMvWE4yMDNHUlE3RS8wPQ==",
+    "ОтраслевойРеквизитПредметаРасчета":{
+      "ИдентификаторФОИВ":"030",
+      "ДатаДокументаОснования":"30.09.2026",
+      "НомерДокументаОснования":"1",
+      "ЗначениеОтраслевогоРеквизита":"UUID={4923128C-1283-440A-9423-B8583B9D88C7}&amp;Time=1790756821000"}}],
+  "СуммаСкидкиНаЧек":0}}
+</code></pre>
+<table>
+<tr><th>Поле</th><th>Тип</th><th>Обяз.</th><th>Описание</th></tr>
+<tr><td><code>КодМаркировки</code></td><td>строка</td><td>да</td><td><strong>полный</strong> КМ в Base64, вместе с разделителями GS1 (0x1D)</td></tr>
+<tr><td><code>ПризнакПредметаРасчета</code></td><td>число</td><td>да</td><td>для маркированного — <code>33</code></td></tr>
+<tr><td><code>ИдентификаторФОИВ</code></td><td>строка</td><td>нет</td><td><code>030</code> — Честный ЗНАК (по умолчанию)</td></tr>
+<tr><td><code>ДатаДокументаОснования</code></td><td>строка</td><td>нет</td><td>ДД.ММ.ГГГГ</td></tr>
+<tr><td><code>НомерДокументаОснования</code></td><td>строка</td><td>нет</td><td>номер документа-основания</td></tr>
+<tr><td><code>ЗначениеОтраслевогоРеквизита</code></td><td>строка</td><td>да</td><td><code>UUID={GUID}&amp;Time=&lt;мс&gt;</code> — <strong>ККТ его не возвращает</strong>, собирает вызывающая сторона</td></tr>
+</table>
+<h2>Полный дамп (живая касса)</h2>
+<p><strong>Фрагмент <code>CheckPackage</code>:</strong></p>
+<pre><code>
+&lt;FiscalString Name="Маркированный товар" Quantity="1" PriceWithDiscount="1.00" AmountWithDiscount="1.00"
+              Department="0" VATRate="5" PaymentMethod="4" CalculationSubject="33"
+              MeasureOfQuantity="0" DiscountAmount="0" VATAmount="0.05"
+              MarkingCode="MDEwNDY5MDY0NjEyMzE4NjIxNS5jZ2d5ZExsaEk6aB05MUVFMTIdOTJHWWt4T2JncXB3SndHMlZNQjF2dnZFTWt2NTlZNnMvWE4yMDNHUlE3RS8wPQ=="&gt;
+  &lt;GoodCodeData EAN13="NDY5MDY0NjEyMzE4Ng==" /&gt;
+  &lt;AgentData /&gt;&lt;VendorData /&gt;&lt;IndustryAttribute /&gt;
+&lt;/FiscalString&gt;
+</code></pre>
+<pre><code>
+→ {"jsonrpc":"2.0","id":101,"method":"СформироватьЧек","params":[
+     {"type":"str","value":"ATOL_KKT_1C_V10_X_ESM#0"},{"type":"bool","value":"false"},
+     {"type":"str","value":"&lt;CheckPackage с MarkingCode&gt;"},{"type":"out","value":65536}]}
+
+← {"jsonrpc":"2.0","id":101,"result":{"method":"СформироватьЧек","type":"bool","value":true,
+     "returned":"VTYPE_BOOL=true","out":["&lt;DocumentOutputParameters CheckNumber=\"414\" … /&gt;"],
+     "outScalars":[],"componentData":["...","СформироватьЧек"]}}
+</code></pre>
+<h2>Ответ шлюза</h2>
+<pre><code>
+{"НомерЧека":"19","НомерДокумента":"414","ФлагРегистрацииККТ":true,"НомерККТВМагазине":0,
+ "ФискальныйПризнак":"1040188424","ОшибкаПечати":false,"НомерУведомленияМТ":null}
+</code></pre>
+<h2>Примечания</h2>
+<ul><li><strong>Проверка КМ и чек обязаны идти через один и тот же хендл устройства.</strong> Иначе ККТ отвечает <code>420 «Контрольная марка не проверена»</code>. В <code>config.json</code> хендл фиксируется полем <code>device</code>.</li></ul>
+<ul><li><code>Time</code> методы проверки КМ не возвращают — берите метку времени сценария.</li></ul>
+<ul><li>Возврат маркированного товара — так же, но <code>ТипЧека: "Возврат"</code> и КМ проверяется заново с <code>ЭтоВозврат: true</code>.</li></ul>
+</section>
+<section id="s5" style="display:none">
+<h1>Снять отчёт без гашения (X-отчёт)</h1>
+<p><strong>Операция:</strong> <code>СнятьОтчетБезГашения</code> · <strong>метод:</strong> <code>НапечататьОтчетБезГашения</code> · <strong>флаги:</strong> <code>--no-dry-run</code></p>
+<p>Смена остаётся открытой, фискального документа не создаётся, в ОФД не уходит.</p>
+<h2>Запрос</h2>
+<pre><code>
+{"СнятьОтчетБезГашения":{"Пароль":"30"}}
+</code></pre>
+<table>
+<tr><th>Поле</th><th>Тип</th><th>Обяз.</th><th>Описание</th></tr>
+<tr><td><code>Пароль</code></td><td>строка или число</td><td>нет</td><td>пароль кассира; в протоколе рабочей кассы всегда <code>"30"</code></td></tr>
+</table>
+<h2>Полный дамп (форма вызова)</h2>
+<pre><code>
+→ {"jsonrpc":"2.0","id":101,"method":"НапечататьОтчетБезГашения","params":[
+     {"type":"str","value":"ATOL_KKT_1C_V10_X_ESM#0"},
+     {"type":"str","value":"&lt;?xml version=\"1.0\" encoding=\"UTF-8\"?&gt;\n&lt;InputParameters&gt;\n  &lt;Parameters CashierName=\"Администратор\" PrintRequired=\"true\" TimeSynchronization=\"true\"/&gt;\n&lt;/InputParameters&gt;"}]}
+
+← {"jsonrpc":"2.0","id":101,"result":{"method":"НапечататьОтчетБезГашения","type":"bool","value":true,
+     "returned":"VTYPE_BOOL=true","out":[],"outScalars":[],"componentData":["НапечататьОтчетБезГашения"]}}
+</code></pre>
+<h2>Ответ шлюза</h2>
+<pre><code>
+true
+</code></pre>
+<p>При ошибке шлюз завершается с ненулевым кодом и пишет причину в журнал</p>
+<p>(`НапечататьОтчетБезГашения: …; ошибка компоненты: &lt;код&gt; «текст»»).</p>
+</section>
+<section id="s6" style="display:none">
+<h1>Снять отчёт с гашением (Z-отчёт)</h1>
+<p><strong>Операция:</strong> <code>СнятьОтчетСГашением</code> · <strong>метод:</strong> <code>ЗакрытьСмену</code> · <strong>флаги:</strong> <code>--no-dry-run --allow-fiscal</code></p>
+<p>Закрывает смену. Фискальный документ, уходит в ОФД.</p>
+<h2>Запрос</h2>
+<pre><code>
+{"СнятьОтчетСГашением":{"Пароль":"30"}}
+</code></pre>
+<table>
+<tr><th>Поле</th><th>Тип</th><th>Обяз.</th><th>Описание</th></tr>
+<tr><td><code>Пароль</code></td><td>строка или число</td><td>нет</td><td>пароль кассира</td></tr>
+</table>
+<h2>Полный дамп (живая касса — вызов метода состояния смены)</h2>
+<pre><code>
+→ {"jsonrpc":"2.0","id":101,"method":"ЗакрытьСмену","params":[
+     {"type":"str","value":"ATOL_KKT_1C_V10_X_ESM#0"},
+     {"type":"str","value":"&lt;?xml version=\"1.0\" encoding=\"UTF-8\"?&gt;\n&lt;InputParameters&gt;\n  &lt;Parameters CashierName=\"Администратор\" PrintRequired=\"true\" TimeSynchronization=\"true\"/&gt;\n&lt;/InputParameters&gt;"},
+     {"type":"out","value":65536}]}
+
+← {"jsonrpc":"2.0","id":101,"result":{"method":"ЗакрытьСмену","type":"bool","value":true,
+     "returned":"VTYPE_BOOL=true","out":["&lt;OutputParameters … ShiftNumber=\"17\" … /&gt;"],
+     "outScalars":[],"componentData":["...","ЗакрытьСмену"]}}
+</code></pre>
+<h2>Ответ шлюза</h2>
+<pre><code>
+true
+</code></pre>
+<h2>Примечания</h2>
+<ul><li>Повторный вызов на закрытой смене даёт ошибку ККТ «Смена закрыта - операция невозможна».</li></ul>
+<ul><li>Для новых чеков смену нужно открыть снова.</li></ul>
+</section>
+<section id="s7" style="display:none">
+<h1>Открыть денежный ящик</h1>
+<p><strong>Операция:</strong> <code>ОткрытьЯщик</code> · <strong>метод:</strong> <code>ОткрытьДенежныйЯщик</code> · <strong>флаги:</strong> <code>--no-dry-run</code></p>
+<h2>Запрос</h2>
+<pre><code>
+{"ОткрытьЯщик":{"Пароль":"30"}}
+</code></pre>
+<table>
+<tr><th>Поле</th><th>Тип</th><th>Обяз.</th><th>Описание</th></tr>
+<tr><td><code>Пароль</code></td><td>строка или число</td><td>нет</td><td>пароль кассира; метод компоненты его не использует</td></tr>
+</table>
+<h2>Полный дамп (форма вызова)</h2>
+<pre><code>
+→ {"jsonrpc":"2.0","id":101,"method":"ОткрытьДенежныйЯщик","params":[
+     {"type":"str","value":"ATOL_KKT_1C_V10_X_ESM#0"}]}
+
+← {"jsonrpc":"2.0","id":101,"result":{"method":"ОткрытьДенежныйЯщик","type":"bool","value":true,
+     "returned":"VTYPE_BOOL=true","out":[],"outScalars":[],"componentData":["ОткрытьДенежныйЯщик"]}}
+</code></pre>
+<h2>Ответ шлюза</h2>
+<pre><code>
+true
+</code></pre>
+</section>
+<section id="s8" style="display:none">
+<h1>Отменить чек</h1>
+<p><strong>Операция:</strong> <code>ОтменитьЧек</code> · <strong>метод:</strong> <code>ЗакрытьСессиюРегистрацииКМ</code> · <strong>флаги:</strong> <code>--no-dry-run</code></p>
+<h2>Запрос</h2>
+<pre><code>
+{"ОтменитьЧек":{"Пароль":"30"}}
+</code></pre>
+<table>
+<tr><th>Поле</th><th>Тип</th><th>Обяз.</th><th>Описание</th></tr>
+<tr><td><code>Пароль</code></td><td>строка или число</td><td>нет</td><td>пароль кассира; метод его не использует</td></tr>
+</table>
+<h2>Полный дамп (форма вызова)</h2>
+<pre><code>
+→ {"jsonrpc":"2.0","id":101,"method":"ЗакрытьСессиюРегистрацииКМ","params":[
+     {"type":"str","value":"ATOL_KKT_1C_V10_X_ESM#0"}]}
+
+← {"jsonrpc":"2.0","id":101,"result":{"method":"ЗакрытьСессиюРегистрацииКМ","type":"bool","value":true,
+     "returned":"VTYPE_BOOL=true","out":[],"outScalars":[],
+     "componentData":["ЗакрытьСессиюРегистрацииКМ"]}}
+</code></pre>
+<h2>Ответ шлюза</h2>
+<pre><code>
+true
+</code></pre>
+<h2>Примечания</h2>
+<p><strong>Отдельной отмены чека в наборе из 36 методов компоненты НЕТ.</strong> Требования (раздел 3.5)</p>
+<p>предписывают при отмене чека вызывать <code>ЗакрытьСессиюРегистрацииКМ()</code> — на это и сделано</p>
+<p>отображение. Отображение требует подтверждения на реальном сценарии отмены.</p>
+</section>
+<section id="s9" style="display:none">
+<h1>Проверить коды маркировки</h1>
+<p><strong>Операция:</strong> <code>ПроверитьКодыМаркировки</code> · <strong>методы:</strong> <code>ЗапросКМ</code> → <code>ПолучитьРезультатыЗапросаКМ</code> → <code>ПодтвердитьКМ</code> · <strong>флаги:</strong> <code>--no-dry-run</code></p>
+<p>Одна команда выполняет весь цикл проверки КМ в Честном ЗНАКе.</p>
+<h2>Запрос</h2>
+<pre><code>
+{"ПроверитьКодыМаркировки":{
+  "ЭтоВозврат":false,
+  "ТипПодтверждения":0,
+  "КодыМаркировки":["0104690646123186215.cggydLlhI:h\u001d91EE12\u001d92GYkxObgqpwJwG2VMB1vvvEMkv59Y6s/XN203GRQ7E/0="]}}
+</code></pre>
+<table>
+<tr><th>Поле</th><th>Тип</th><th>Обяз.</th><th>Описание</th></tr>
+<tr><td><code>КодыМаркировки</code></td><td>массив строк</td><td>да</td><td>коды <strong>без</strong> Base64, сырыми строками; разделитель GS1 — <code>\u001d</code>. В Base64 шлюз кодирует сам</td></tr>
+<tr><td><code>ЭтоВозврат</code></td><td>логическое</td><td>нет</td><td><code>true</code> — проверка для возврата</td></tr>
+<tr><td><code>ТипПодтверждения</code></td><td>число</td><td>нет</td><td><code>0</code> принять, <code>1</code> отклонить, отрицательное — не подтверждать. По умолчанию <code>0</code></td></tr>
+</table>
+<h2>Полный дамп (живая касса)</h2>
+<pre><code>
+→ {"jsonrpc":"2.0","id":102,"method":"ЗапросКМ","params":[
+     {"type":"str","value":"ATOL_KKT_1C_V10_X_ESM#1"},
+     {"type":"str","value":"&lt;?xml version=\"1.0\" encoding=\"UTF-8\"?&gt;\r\n&lt;RequestKM GUID=\"{96B38356-5D0A-40C7-9B5E-7763D5AD68CC}\" MarkingCode=\"MDEwNDY5MDY0NjEyMzE4NjIxNS5jZ2d5ZExsaEk6aB05MUVFMTIdOTJHWWt4T2JncXB3SndHMlZNQjF2dnZFTWt2NTlZNnMvWE4yMDNHUlE3RS8wPQ==\" PlannedStatus=\"1\" Quantity=\"1\" MeasureOfQuantity=\"0\" WaitForResult=\"true\" /&gt;"},
+     {"type":"out","value":65536}]}
+
+← {"jsonrpc":"2.0","id":102,"result":{"method":"ЗапросКМ","type":"bool","value":true,
+     "returned":"VTYPE_BOOL=true",
+     "out":["&lt;?xml version=\"1.0\" encoding=\"UTF-8\"?&gt;\n&lt;RequestKMResult Checking=\"False\" CheckingResult=\"False\"/&gt;\n"],
+     "outScalars":[],"componentData":["...","ЗапросКМ"]}}
+</code></pre>
+<pre><code>
+→ {"jsonrpc":"2.0","id":103,"method":"ПолучитьРезультатыЗапросаКМ","params":[
+     {"type":"str","value":"ATOL_KKT_1C_V10_X_ESM#1"},
+     {"type":"out","value":65536},{"type":"out-int","value":-1}]}
+
+← {"jsonrpc":"2.0","id":103,"result":{"method":"ПолучитьРезультатыЗапросаКМ","type":"bool","value":true,
+     "out":[""],"outScalars":[{"index":2,"vt":3,"type":"int","value":1}]}}      ← статус 1: ещё не получен
+</code></pre>
+<p>Опрос повторяется (до 60 раз с паузой 0,5 с). Когда статус станет <code>0</code>:</p>
+<pre><code>
+← {"jsonrpc":"2.0","id":105,"result":{"method":"ПолучитьРезультатыЗапросаКМ","type":"bool","value":true,
+     "out":["&lt;?xml version=\"1.0\" encoding=\"UTF-8\"?&gt;\n&lt;ProcessingKMResult GUID=\"{96B38356-5D0A-40C7-9B5E-7763D5AD68CC}\" Result=\"True\" ResultCode=\"15\" StatusInfo=\"1\" HandleCode=\"0\"/&gt;\n"],
+     "outScalars":[{"index":2,"vt":3,"type":"int","value":0}]}}
+</code></pre>
+<pre><code>
+→ {"jsonrpc":"2.0","id":106,"method":"ПодтвердитьКМ","params":[
+     {"type":"str","value":"ATOL_KKT_1C_V10_X_ESM#1"},
+     {"type":"str","value":"{96B38356-5D0A-40C7-9B5E-7763D5AD68CC}"},
+     {"type":"int","value":1}]}
+
+← {"jsonrpc":"2.0","id":106,"result":{"method":"ПодтвердитьКМ","type":"bool","value":true,
+     "returned":"VTYPE_BOOL=true","out":[],"outScalars":[],"componentData":["ПодтвердитьКМ"]}}
+</code></pre>
+<h2>Ответ шлюза</h2>
+<pre><code>
+{"КодыМаркировки":{
+  "0104690646123186215.cggydLlhI:h&lt;GS&gt;91EE12&lt;GS&gt;92GYkxObgqpwJwG2VMB1vvvEMkv59Y6s/XN203GRQ7E/0=":
+  "проверка КМ пройдена (ОИСМ: Result=True, ResultCode=15, StatusInfo=1), КМ отклонена (тип 1)"}}
+</code></pre>
+<p><code>&lt;GS&gt;</code> — невидимый разделитель 0x1D; в JSON он приходит как <code>\u001d</code>.</p>
+<h2>Расшифровка ProcessingKMResult</h2>
+<table>
+<tr><th>Атрибут</th><th>Смысл</th></tr>
+<tr><td><code>Result</code></td><td><code>True</code> — проверка КП КМ положительная</td></tr>
+<tr><td><code>ResultCode</code></td><td>битовая маска, таблица 110 ФФД: бит 0 — код проверен, 1 — КП положительный, 2 — статус ОИСМ проверен, 3 — планируемый статус корректен. <code>15</code> = все четыре</td></tr>
+<tr><td><code>StatusInfo</code></td><td><code>1</code> — статус товара корректен</td></tr>
+<tr><td><code>HandleCode</code></td><td><code>0</code> — запрос обработан</td></tr>
+<tr><td><code>GUID</code></td><td>нужен для отраслевого реквизита чека</td></tr>
+</table>
+<h2>Примечания</h2>
+<ul><li><code>RequestKMResult Checking="False"</code> — норма для этой кассы: ФН не умеет проверять КП, итог даёт ОИСМ.</li></ul>
+<ul><li>Неподтверждённый запрос оставляет процедуру открытой: следующий <code>ЗапросКМ</code> падает с <code>401 «Процедура проверки КМ уже запущена»</code>. Снимается методом <code>ЗакрытьСессиюРегистрацииКМ</code>.</li></ul>
+<ul><li>Пока статус не <code>0</code> или <code>2</code>, другие операции с КМ невозможны.</li></ul>
+</section>
+<section id="s10" style="display:none">
+<h1>Код 1С</h1>
+<p>Гум-сервис для работы с ККТ через шлюз <code>gate.atol.piot</code>, по соглашениям написания</p>
+<p>кода: локальные переменные — <code>л</code>, неэкспортные функции — <code>м</code>, экспортные — без префикса,</p>
+<p>действия в 1–3 строки не выносятся, к элементам соответствия обращаемся через <code>Получить()</code>.</p>
+<p>Отправитель команд в шлюз — очередь GATE (см. <code>00_Как_пользоваться.md</code>). Шлюз слушает</p>
+<p>её в режиме <code>2_gateway_queue.bat</code>, принимает один JSON на команду и возвращает JSON-ответ.</p>
+<h2>Модуль гум-сервиса</h2>
+<pre><code>
+// Гум-сервис ККТ: команды шлюзу gate.atol.piot через очередь GATE.
+
+// Адрес и очередь — из настроек; здесь для наглядности.
+Функция Вызвать(М, П, К) Экспорт
+
+	лРезультат = Неопределено;
+
+	Если      М = "Состояние"               Тогда лРезультат = мСостояние(П, К);
+	ИначеЕсли М = "ОткрытьСмену"            Тогда лРезультат = мОткрытьСмену(П, К);
+	ИначеЕсли М = "Продажа"                 Тогда лРезультат = мЧек(П, К, "Продажа");
+	ИначеЕсли М = "Возврат"                 Тогда лРезультат = мЧек(П, К, "Возврат");
+	ИначеЕсли М = "ПродажаМаркированного"   Тогда лРезультат = мПродажаМаркированного(П, К);
+	ИначеЕсли М = "СнятьОтчетБезГашения"    Тогда лРезультат = мОтчетБезГашения(П, К);
+	ИначеЕсли М = "СнятьОтчетСГашением"     Тогда лРезультат = мОтчетСГашением(П, К);
+	ИначеЕсли М = "ОткрытьЯщик"             Тогда лРезультат = мОткрытьЯщик(П, К);
+	ИначеЕсли М = "ОтменитьЧек"             Тогда лРезультат = мОтменитьЧек(П, К);
+	ИначеЕсли М = "ПроверитьКодыМаркировки" Тогда лРезультат = мПроверитьКодыМаркировки(П, К);
+	Иначе
+		ВызватьИсключение("Метод " + М + " не реализован");
+	КонецЕсли;
+
+	Возврат лРезультат;
+
+КонецФункции
+
+//---------------------------------------------------------------------------------------------------
+//
+//---------------------------------------------------------------------------------------------------
+
+// Отправка одной команды шлюзу. П — параметры операции, лМетод — имя операции в протоколе.
+Функция мВыполнить(П, К, лМетод)
+
+	лДанные = Новый Соответствие;
+	лДанные.Вставить(лМетод, П);
+
+	лТело = мВJSON(лДанные);
+
+	лСоединение = Новый HTTPСоединение(К.Сервер, К.Порт, , , К.Таймаут);
+	лЗапрос = Новый HTTPЗапрос("/qst/" + К.Очередь + "/request/" + К.Ттл);
+	лЗапрос.Заголовки.Вставить("Content-Type", "application/json; charset=utf-8");
+	лЗапрос.УстановитьТелоИзСтроки(лТело, КодировкаТекста.UTF8);
+
+	лОтвет = лСоединение.ВызватьHTTPМетод("POST", лЗапрос);
+	Если лОтвет.КодСостояния &lt;&gt; 200 Тогда
+		ВызватьИсключение("Шлюз ответил: " + лОтвет.КодСостояния);
+	КонецЕсли;
+
+	лТекст = лОтвет.ПолучитьТелоКакСтроку(КодировкаТекста.UTF8);
+	Если ПустаяСтрока(лТекст) Тогда
+		ВызватьИсключение("Шлюз не ответил за " + К.Ттл + " с");
+	КонецЕсли;
+
+	// Разбор ответа: строки — через Получить(), как принято для соответствий.
+	лЧтение = Новый ЧтениеJSON;
+	лЧтение.УстановитьСтроку(лТекст);
+	лРезультат = ПрочитатьJSON(лЧтение);
+
+	Если лРезультат.Получить("Ошибка") &lt;&gt; Неопределено Тогда
+		ВызватьИсключение(лРезультат.Получить("Ошибка"));
+	КонецЕсли;
+
+	Возврат лРезультат;
+
+КонецФункции
+
+Функция мВJSON(лЗначение)
+
+	лЗапись = Новый ЗаписьJSON;
+	лЗапись.УстановитьСтроку();
+	ЗаписатьJSON(лЗапись, лЗначение);
+
+	Возврат лЗапись.Закрыть();
+
+КонецФункции
+
+Функция мСостояние(П, К)
+
+	Возврат мВыполнить(П, К, "Состояние");
+
+КонецФункции
+
+Функция мОткрытьСмену(П, К)
+
+	Возврат мВыполнить(П, К, "ОткрытьСмену");
+
+КонецФункции
+
+// Общий чек: продажа и возврат отличаются только полем ТипЧека.
+Функция мЧек(П, К, лТип)
+
+	лЧек = Новый Соответствие;
+	лЧек.Вставить("ТипЧека", лТип);
+	лЧек.Вставить("СНО", П.Получить("СНО"));
+	лЧек.Вставить("Кассир", мКассир(П));
+	лЧек.Вставить("Оплата", мОплата(П.Получить("ОплатаНаличными"), П.Получить("ОплатаБезналичными")));
+	лЧек.Вставить("Товары", мТовары(П.Получить("Товары")));
+	лЧек.Вставить("СуммаСкидкиНаЧек", 0);
+
+	лПараметры = Новый Соответствие;
+	лПараметры.Вставить("НапечататьЧек", лЧек);
+
+	Возврат мВыполнить(лПараметры, К, "НапечататьЧек");
+
+КонецФункции
+
+Функция мКассир(П)
+
+	лКассир = Новый Соответствие;
+	лКассир.Вставить("Имя", П.Получить("Кассир"));
+
+	Возврат лКассир;
+
+КонецФункции
+
+// Оплата — массив из 9 чисел: [0] нал, [1] безнал, остальные нули.
+Функция мОплата(лНаличными, лБезналичными)
+
+	Возврат мНовыйМассив(9, лНаличными, лБезналичными);
+
+КонецФункции
+
+// Товары из таблицы значений: Наименование, Количество, Цена, Сумма, СтавкаНДС, КодМаркировки.
+Функция мТовары(лТаблица)
+
+	лТовары = Новый Массив;
+
+	Для Каждого лСтрока Из лТаблица Цикл
+		лПозиция = Новый Соответствие;
+		лПозиция.Вставить("Наименование", лСтрока.Наименование);
+		лПозиция.Вставить("Количество", лСтрока.Количество);
+		лПозиция.Вставить("Цена", лСтрока.Цена);
+		лПозиция.Вставить("Сумма", лСтрока.Сумма);
+		лПозиция.Вставить("Скидка", 0);
+		лПозиция.Вставить("Подразделение", 0);
+		лПозиция.Вставить("СтавкаНДС", лСтрока.СтавкаНДС);
+		лПозиция.Вставить("НомерНалога", лСтрока.СтавкаНДС);
+		лПозиция.Вставить("ПризнакСпособаРасчета", 4);
+
+		// Маркированный товар: признак 33, код в Base64 и отраслевой реквизит.
+		Если ЗначениеЗаполнено(лСтрока.КодМаркировки) Тогда
+			лПозиция.Вставить("ПризнакПредметаРасчета", 33);
+			лПозиция.Вставить("КодМаркировки", мBase64(лСтрока.КодМаркировки));
+			лПозиция.Вставить("ОтраслевойРеквизитПредметаРасчета", мОтраслевой(лСтрока));
+		Иначе
+			лПозиция.Вставить("ПризнакПредметаРасчета", 1);
+		КонецЕсли;
+
+		лТовары.Добавить(лПозиция);
+	КонецЦикла;
+
+	Возврат лТовары;
+
+КонецФункции
+
+// Код маркировки: разделители GS1 (0x1D) уже стоят в строке, кодируем всё в Base64.
+Функция мBase64(лКод)
+
+	Возврат Base64Строка(ПолучитьДвоичныеДанныеИзСтроки(лКод, КодировкаТекста.UTF8));
+
+КонецФункции
+
+// Отраслевой реквизит: UUID из ответа проверки КМ и время сценария в миллисекундах.
+Функция мОтраслевой(лСтрока)
+
+	лРеквизит = Новый Соответствие;
+	лРеквизит.Вставить("ИдентификаторФОИВ", "030");
+	лРеквизит.Вставить("ДатаДокументаОснования", Формат(ТекущаяДата(), "ДЛФ=DD"));
+	лРеквизит.Вставить("НомерДокументаОснования", "1");
+	лРеквизит.Вставить("ЗначениеОтраслевогоРеквизита",
+		"UUID=" + лСтрока.GUIDПроверки + "&amp;Time=" + мВремяВМиллисекундах());
+
+	Возврат лРеквизит;
+
+КонецФункции
+
+Функция мВремяВМиллисекундах()
+
+	Возврат Цел(ТекущаяУниверсальнаяДатаВМиллисекундах());
+
+КонецФункции
+
+Функция мПродажаМаркированного(П, К)
+
+	// Сначала проверка КМ, затем чек — и обязательно на одном и том же хендле устройства.
+	лПроверка = мПроверитьКодыМаркировки(П, К);
+	П.Вставить("GUIDПроверки", лПроверка.Получить("GUID"));
+
+	Возврат мЧек(П, К, "Продажа");
+
+КонецФункции
+
+Функция мПроверитьКодыМаркировки(П, К)
+
+	лЗапрос = Новый Соответствие;
+	лЗапрос.Вставить("ЭтоВозврат", П.Получить("ЭтоВозврат"));
+	лЗапрос.Вставить("ТипПодтверждения", 0);
+	лЗапрос.Вставить("КодыМаркировки", П.Получить("КодыМаркировки"));
+
+	лПараметры = Новый Соответствие;
+	лПараметры.Вставить("ПроверитьКодыМаркировки", лЗапрос);
+
+	Возврат мВыполнить(лПараметры, К, "ПроверитьКодыМаркировки");
+
+КонецФункции
+
+Функция мОтчетБезГашения(П, К)
+
+	лПараметры = Новый Соответствие;
+	лПараметры.Вставить("Пароль", П.Получить("Пароль"));
+
+	Возврат мВыполнить(лПараметры, К, "СнятьОтчетБезГашения");
+
+КонецФункции
+
+Функция мОтчетСГашением(П, К)
+
+	лПараметры = Новый Соответствие;
+	лПараметры.Вставить("Пароль", П.Получить("Пароль"));
+
+	Возврат мВыполнить(лПараметры, К, "СнятьОтчетСГашением");
+
+КонецФункции
+
+Функция мОткрытьЯщик(П, К)
+
+	лПараметры = Новый Соответствие;
+	лПараметры.Вставить("Пароль", П.Получить("Пароль"));
+
+	Возврат мВыполнить(лПараметры, К, "ОткрытьЯщик");
+
+КонецФункции
+
+Функция мОтменитьЧек(П, К)
+
+	лПараметры = Новый Соответствие;
+	лПараметры.Вставить("Пароль", П.Получить("Пароль"));
+
+	Возврат мВыполнить(лПараметры, К, "ОтменитьЧек");
+
+КонецФункции
+</code></pre>
+<h2>Вызов из 1С</h2>
+<pre><code>
+лК = Новый Соответствие;
+лК.Вставить("Сервер", "gate.gumse.ru");
+лК.Вставить("Порт", 47005);
+лК.Вставить("Очередь", "kkt.test");
+лК.Вставить("Ттл", 60);
+лК.Вставить("Таймаут", 60);
+
+лТовары = Новый ТаблицаЗначений;
+лТовары.Колонки.Добавить("Наименование");
+лТовары.Колонки.Добавить("Количество");
+лТовары.Колонки.Добавить("Цена");
+лТовары.Колонки.Добавить("Сумма");
+лТовары.Колонки.Добавить("СтавкаНДС");
+лТовары.Колонки.Добавить("КодМаркировки");
+
+лСтрока = лТовары.Добавить();
+лСтрока.Наименование = "Тестовая позиция";
+лСтрока.Количество   = 1;
+лСтрока.Цена         = 1;
+лСтрока.Сумма        = 1;
+лСтрока.СтавкаНДС    = "5";
+
+лП = Новый Соответствие;
+лП.Вставить("СНО", 1);
+лП.Вставить("Кассир", "Администратор");
+лП.Вставить("ОплатаНаличными", 1);
+лП.Вставить("ОплатаБезналичными", 0);
+лП.Вставить("Товары", лТовары);
+
+лЧек = Вызвать("Продажа", лП, лК);
+Сообщить("Чек " + лЧек.Получить("НомерЧека") + ", ФД " + лЧек.Получить("НомерДокумента")
+	+ ", ФП " + лЧек.Получить("ФискальныйПризнак"));
+</code></pre>
+<h2>Прямой вызов компоненты (для сравнения)</h2>
+<p>Шлюз делает ровно то же самое, но по HTTP. Если вызывать компоненту из 1С напрямую,</p>
+<p>порядок такой: <code>ПараметрыОборудования</code> → <code>ПодключитьОборудование</code> → рабочая команда.</p>
+<p>XML — тот же, что в дампах (<code>01_Продажа.md</code> и далее).</p>
+<pre><code>
+лВК = Новый("AddIn.ATOL_KKT_1C_V10_X_ESM");
+
+лИД = "";
+лВК.ПодключитьОборудование(лИД, "ККТ", лXmlНастроек);   // ИД устройства — выходной
+
+лУспех = Ложь;
+лXml = "";
+лВК.СформироватьЧек(лИД, Ложь, лXmlЧека, лXml);         // 4-й параметр — размер буфера/строка
+лУспех = лВК.ПолучитьТекущееСостояние(лИД, лXml);
+</code></pre>
+<p><strong>Важно:</strong> хендл устройства, полученный в <code>ПодключитьОборудование</code>, надо использовать</p>
+<p>для <strong>всех</strong> последующих команд. Проверка КМ и чек, выполненные на разных хендлах, дают</p>
+<p>ошибку <code>420 «Контрольная марка не проверена»</code>.</p>
+<h2>Соответствие операций</h2>
+<table>
+<tr><th>Метод гум-сервиса</th><th>Операция протокола</th><th>Файл с дампом</th></tr>
+<tr><td><code>Продажа</code></td><td><code>НапечататьЧек</code>, <code>ТипЧека: "Продажа"</code></td><td><code>01_Продажа.md</code></td></tr>
+<tr><td><code>Возврат</code></td><td><code>НапечататьЧек</code>, <code>ТипЧека: "Возврат"</code></td><td><code>02_Возврат.md</code></td></tr>
+<tr><td><code>ПродажаМаркированного</code></td><td><code>НапечататьЧек</code> + проверка КМ</td><td><code>03_Продажа_маркированного_товара.md</code></td></tr>
+<tr><td><code>СнятьОтчетБезГашения</code></td><td><code>СнятьОтчетБезГашения</code></td><td><code>04_СнятьОтчетБезГашения.md</code></td></tr>
+<tr><td><code>СнятьОтчетСГашением</code></td><td><code>СнятьОтчетСГашением</code></td><td><code>05_СнятьОтчетСГашением.md</code></td></tr>
+<tr><td><code>ОткрытьЯщик</code></td><td><code>ОткрытьЯщик</code></td><td><code>06_ОткрытьЯщик.md</code></td></tr>
+<tr><td><code>ОтменитьЧек</code></td><td><code>ОтменитьЧек</code></td><td><code>07_ОтменитьЧек.md</code></td></tr>
+<tr><td><code>ПроверитьКодыМаркировки</code></td><td><code>ПроверитьКодыМаркировки</code></td><td><code>08_ПроверитьКодыМаркировки.md</code></td></tr>
+</table>
+</section>
+</main>
+</div>
+<script>
+(function(){
+  var links = document.querySelectorAll('nav a');
+  function show(el){
+    var host = document.getElementById('s' + el.dataset.i);
+    if(!host){ return; }
+    for(var i=0;i<links.length;i++){ links[i].className=''; }
+    el.className='on';
+    var secs = document.querySelectorAll('main section');
+    for(var j=0;j<secs.length;j++){ secs[j].style.display='none'; }
+    host.style.display='block';
+    window.scrollTo(0,0);
+  }
+  for(var i=0;i<links.length;i++){
+    links[i].addEventListener('click', function(e){ e.preventDefault(); show(this); });
+  }
+  if(links.length){ show(links[0]); }
+})();
+</script>
+</body>
+</html>
